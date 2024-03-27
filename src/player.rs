@@ -95,6 +95,7 @@ impl PlayerBundle {
         input_map.insert(Right, KeyCode::KeyD);
         input_map.insert(Right, GamepadButtonType::DPadRight);
 
+        // Actions
         input_map.insert(Run, KeyCode::ShiftLeft);
         input_map.insert(Run, KeyCode::ShiftRight);
         input_map.insert(Run, GamepadButtonType::East);
