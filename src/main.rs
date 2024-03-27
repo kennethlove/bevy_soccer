@@ -5,8 +5,9 @@ use bevy_kira_audio::prelude::*;
 use bevy_pkv::PkvStore;
 use bevy_rapier2d::{prelude::*, rapier::{dynamics::{RigidBodyBuilder, RigidBodySet}, geometry::{ColliderBuilder, ColliderSet}}};
 
-use bevy_soccer::player::PlayerPlugin;
+use bevy_soccer::animation::animate_sprites;
 use bevy_soccer::constants::*;
+use bevy_soccer::player::PlayerPlugin;
 
 fn main() {
     App::new()
@@ -36,6 +37,7 @@ fn main() {
         ))
         .add_plugins(PlayerPlugin)
         .add_systems(Startup, (setup_camera, setup_ground))
+        .add_systems(Update, animate_sprites)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }

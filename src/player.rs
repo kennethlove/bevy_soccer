@@ -1,9 +1,13 @@
-use crate::constants::*;
-use bevy::prelude::*;
+use crate::{animation::{AnimationIndices, AnimationTimer}, constants::*};
+use bevy::{prelude::*, transform::commands};
 use leafwing_input_manager::prelude::*;
 
 const WALK_SPEED: f32 = 75.;
 const RUN_SPEED: f32 = 150.;
+
+const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
+const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
+const RUN_FRAMES: AnimationIndices = AnimationIndices { first: 18, last: 22 };
 
 pub struct PlayerPlugin;
 
@@ -20,6 +24,7 @@ impl Plugin for PlayerPlugin {
 #[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
 enum PlayerAction {
     // Movement
+    Idle,
     Up,
     Down,
     Left,
@@ -54,7 +59,7 @@ struct Player;
 
 #[derive(Bundle)]
 struct PlayerBundle {
-    sprite_bundle: SpriteBundle,
+    sprite_bundle: SpriteSheetBundle,
     player: Player,
     input_manager: InputManagerBundle<PlayerAction>,
 }
@@ -63,7 +68,7 @@ impl PlayerBundle {
     fn default() -> Self {
         let translation = Vec3::new(0., 0., 1.);
         Self {
-            sprite_bundle: SpriteBundle {
+            sprite_bundle: SpriteSheetBundle {
                 transform: Transform::from_translation(translation + GROUND_OFFSET),
                 sprite: Sprite {
                     color: Color::RED,
@@ -107,8 +112,26 @@ impl PlayerBundle {
     }
 }
 
-fn spawn_player(mut commands: Commands) {
-    commands.spawn(PlayerBundle::default());
+fn spawn_player(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    let texture: Handle<Image> = asset_server.load("sprites/blue.png");
+    let layout = TextureAtlasLayout::from_grid(Vec2::new(24., 24.), 24, 1, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(layout);
+    let mut player = PlayerBundle::default();
+
+    player.sprite_bundle.texture = texture;
+    player.sprite_bundle.sprite.color = Color::WHITE;
+    player.sprite_bundle.atlas = TextureAtlas {
+        layout: texture_atlas_layout,
+        index: IDLE_FRAMES.first,
+    };
+    let mut player = commands.spawn(player);
+    player.insert(IDLE_FRAMES);
+    player.insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)));
+
 }
 
 #[derive(Event)]
@@ -171,7 +194,8 @@ fn player_dashes(
 }
 
 fn move_player(
-    mut query: Query<(&mut Transform, &mut Sprite), With<Player>>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Transform), With<Player>>,
     mut player_moves: EventReader<PlayerMoves>,
     time: Res<Time>
 ) {
@@ -179,8 +203,9 @@ fn move_player(
         return;
     }
 
-    let (mut transform, mut sprite) = query.single_mut();
-    let mut movement = 0.0;
+    let (entity, mut transform) = query.single_mut();
+    let mut entity = commands.entity(entity);
+    entity.insert(IDLE_FRAMES);
 
     for event in player_moves.read() {
         match event {
@@ -188,11 +213,14 @@ fn move_player(
                 direction,
                 dashing
             } => {
-                sprite.color = Color::RED;
                 if *dashing {
-                    sprite.color = Color::BLUE;
+                    entity.insert(RUN_FRAMES);
+                } else {
+                    entity.insert(WALK_FRAMES);
                 }
-                transform.translation += Vec3::new(direction.x, direction.y, 0.0) * time.delta_seconds() * if *dashing { RUN_SPEED } else { WALK_SPEED };
+                transform.translation += Vec3::new(direction.x, direction.y, 0.0) *
+                                            time.delta_seconds() *
+                                            if *dashing { RUN_SPEED } else { WALK_SPEED };
             }
         }
     }
