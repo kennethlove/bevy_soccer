@@ -5,6 +5,9 @@ use bevy_kira_audio::prelude::*;
 use bevy_pkv::PkvStore;
 use bevy_rapier2d::{prelude::*, rapier::{dynamics::{RigidBodyBuilder, RigidBodySet}, geometry::{ColliderBuilder, ColliderSet}}};
 
+use bevy_soccer::player::PlayerPlugin;
+use bevy_soccer::constants::*;
+
 fn main() {
     App::new()
         .insert_resource(AssetMetaCheck::Never) // Makes WASM happy
@@ -17,7 +20,7 @@ fn main() {
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
                     title: "Soccer Game".to_string(),
-                    resolution:(1200., 800.).into(),
+                    resolution:(WINDOW_WIDTH, WINDOW_HEIGHT).into(),
                     resizable: false,
                     ..default()
                 }),
@@ -31,6 +34,7 @@ fn main() {
             RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.),
             RapierDebugRenderPlugin::default(),
         ))
+        .add_plugins(PlayerPlugin)
         .add_systems(Startup, (setup_camera, setup_ground))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
@@ -51,19 +55,17 @@ fn setup_ground(
 ) {
     rapier_config.gravity = Vec2::ZERO;
 
-    let ground_size_width = 1200.;
-    let ground_size_height = 750.;
     commands.spawn((
         SpriteBundle {
-            transform: Transform::from_translation(Vec3::new(0., 25., 0.)),
+            transform: Transform::from_translation(GROUND_OFFSET),
             sprite: Sprite {
                 color: Color::BEIGE,
-                custom_size: Some(Vec2::new(ground_size_width, ground_size_height)),
+                custom_size: Some(Vec2::new(GROUND_SIZE_WIDTH, GROUND_SIZE_HEIGHT)),
                 ..default()
             },
             ..default()
         },
         RigidBody::Fixed,
-        Collider::cuboid(ground_size_width / 2., ground_size_height / 2.)
+        Collider::cuboid(GROUND_SIZE_WIDTH / 2., GROUND_SIZE_HEIGHT / 2.)
     ));
 }
