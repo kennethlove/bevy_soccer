@@ -2,6 +2,9 @@ use crate::constants::*;
 use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
+const WALK_SPEED: f32 = 75.;
+const RUN_SPEED: f32 = 150.;
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -178,8 +181,6 @@ fn move_player(
 
     let (mut transform, mut sprite) = query.single_mut();
     let mut movement = 0.0;
-    let WALK_SPEED = 75.;
-    let RUN_SPEED = 150.;
 
     for event in player_moves.read() {
         match event {
