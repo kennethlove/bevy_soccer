@@ -1,5 +1,8 @@
-use crate::{animation::{AnimationIndices, AnimationTimer}, constants::*};
-use bevy::{prelude::*, transform::commands};
+use crate::{
+    animation::{AnimationIndices, AnimationTimer},
+    constants::*,
+};
+use bevy::prelude::*;
 use leafwing_input_manager::prelude::*;
 
 const WALK_SPEED: f32 = 75.;
@@ -7,17 +10,29 @@ const RUN_SPEED: f32 = 150.;
 
 const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
 const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
-const RUN_FRAMES: AnimationIndices = AnimationIndices { first: 18, last: 22 };
+const RUN_FRAMES: AnimationIndices = AnimationIndices {
+    first: 18,
+    last: 23,
+};
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<PlayerMoves>()
+        app.init_state::<PlayerState>()
+            .add_event::<PlayerMoves>()
             .add_plugins(InputManagerPlugin::<PlayerAction>::default())
             .add_systems(Startup, spawn_player)
-            .add_systems(Update, (player_walks, player_dashes))
-            .add_systems(FixedUpdate, move_player);
+            .add_systems(FixedUpdate, (player_walks, player_dashes))
+            .add_systems(
+                Update,
+                (
+                    movement,
+                    idle_animation.run_if(in_state(PlayerState::Idle)),
+                    walk_animation.run_if(in_state(PlayerState::Walking)),
+                    run_animation.run_if(in_state(PlayerState::Running)),
+                ),
+            );
     }
 }
 
@@ -33,6 +48,14 @@ enum PlayerAction {
     // Actions
     Walk,
     Run,
+}
+
+#[derive(Clone, Component, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
+enum PlayerState {
+    #[default]
+    Idle,
+    Walking,
+    Running,
 }
 
 impl PlayerAction {
@@ -130,8 +153,10 @@ fn spawn_player(
     };
     let mut player = commands.spawn(player);
     player.insert(IDLE_FRAMES);
-    player.insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)));
-
+    player.insert(AnimationTimer(Timer::from_seconds(
+        0.1,
+        TimerMode::Repeating,
+    )));
 }
 
 #[derive(Event)]
@@ -193,35 +218,79 @@ fn player_dashes(
     }
 }
 
-fn move_player(
+fn movement(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Transform), With<Player>>,
+    mut query: Query<&mut Transform, With<Player>>,
     mut player_moves: EventReader<PlayerMoves>,
-    time: Res<Time>
+    mut next_state: ResMut<NextState<PlayerState>>,
+    time: Res<Time>,
 ) {
     if query.is_empty() {
         return;
     }
 
-    let (entity, mut transform) = query.single_mut();
-    let mut entity = commands.entity(entity);
-    entity.insert(IDLE_FRAMES);
+    let mut transform = query.single_mut();
+    next_state.set(PlayerState::Idle);
 
     for event in player_moves.read() {
-        match event {
-            PlayerMoves {
-                direction,
-                dashing
-            } => {
-                if *dashing {
-                    entity.insert(RUN_FRAMES);
-                } else {
-                    entity.insert(WALK_FRAMES);
-                }
-                transform.translation += Vec3::new(direction.x, direction.y, 0.0) *
-                                            time.delta_seconds() *
-                                            if *dashing { RUN_SPEED } else { WALK_SPEED };
+        let PlayerMoves { direction, dashing } = event;
+        {
+            if *dashing {
+                next_state.set(PlayerState::Running);
+            } else {
+                next_state.set(PlayerState::Walking);
             }
+            transform.translation += Vec3::new(direction.x, direction.y, 0.0)
+                * time.delta_seconds()
+                * if *dashing { RUN_SPEED } else { WALK_SPEED };
         }
+    }
+}
+
+fn idle_animation(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut TextureAtlas), With<Player>>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (entity, mut atlas) = query.single_mut();
+    let mut entity = commands.entity(entity);
+    entity.insert(IDLE_FRAMES);
+    if atlas.index > IDLE_FRAMES.last {
+        atlas.index = IDLE_FRAMES.first;
+    }
+}
+
+fn walk_animation(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut TextureAtlas), With<Player>>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (entity, mut atlas) = query.single_mut();
+    let mut entity = commands.entity(entity);
+    entity.insert(WALK_FRAMES);
+    if atlas.index < WALK_FRAMES.first || atlas.index > WALK_FRAMES.last {
+        atlas.index = WALK_FRAMES.first;
+    }
+}
+
+fn run_animation(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut TextureAtlas), With<Player>>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (entity, mut atlas) = query.single_mut();
+    let mut entity = commands.entity(entity);
+    entity.insert(RUN_FRAMES);
+    if atlas.index < RUN_FRAMES.first || atlas.index > RUN_FRAMES.last {
+        atlas.index = RUN_FRAMES.first;
     }
 }
