@@ -11,8 +11,8 @@ const RUN_SPEED: f32 = 150.;
 const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
 const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
 const KICK_FRAMES: AnimationIndices = AnimationIndices {
-    first: 12,
-    last: 12,
+    first: 11,
+    last: 13,
 };
 const RUN_FRAMES: AnimationIndices = AnimationIndices {
     first: 18,
@@ -310,12 +310,10 @@ fn movement(
             }
 
             if let Some(direction) = direction {
-                if !*kicking {
-                    sprite.flip_x = direction.x < 0.;
-                    transform.translation += Vec3::new(direction.x, direction.y, 0.0)
-                        * time.delta_seconds()
-                        * if *running { RUN_SPEED } else { WALK_SPEED };
-                }
+                sprite.flip_x = direction.x < 0.;
+                transform.translation += Vec3::new(direction.x, direction.y, 0.0)
+                    * time.delta_seconds()
+                    * if *running { RUN_SPEED } else { WALK_SPEED };
             }
         }
     }
