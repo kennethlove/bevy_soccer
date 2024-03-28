@@ -15,6 +15,22 @@ const RUN_FRAMES: AnimationIndices = AnimationIndices {
     last: 23,
 };
 
+#[derive(Clone, Component, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
+enum PlayerState {
+    #[default]
+    Idle,
+    Walking,
+    Running,
+}
+
+fn log_transitions(mut transitions: EventReader<StateTransitionEvent<PlayerState>>) {
+    for transition in transitions.read() {
+        info!(
+            "transition: {:?} => {:?}",
+            transition.before, transition.after
+        );
+    }
+}
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -23,14 +39,15 @@ impl Plugin for PlayerPlugin {
             .add_event::<PlayerMoves>()
             .add_plugins(InputManagerPlugin::<PlayerAction>::default())
             .add_systems(Startup, spawn_player)
-            .add_systems(FixedUpdate, (player_walks, player_dashes))
+            .add_systems(FixedUpdate, (player_idles, player_walks, player_runs))
             .add_systems(
                 Update,
                 (
+                    log_transitions,
                     movement,
                     idle_animation.run_if(in_state(PlayerState::Idle)),
-                    walk_animation.run_if(in_state(PlayerState::Walking)),
                     run_animation.run_if(in_state(PlayerState::Running)),
+                    walk_animation.run_if(in_state(PlayerState::Walking)),
                 ),
             );
     }
@@ -48,14 +65,6 @@ enum PlayerAction {
     // Actions
     Walk,
     Run,
-}
-
-#[derive(Clone, Component, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
-enum PlayerState {
-    #[default]
-    Idle,
-    Walking,
-    Running,
 }
 
 impl PlayerAction {
@@ -161,8 +170,26 @@ fn spawn_player(
 
 #[derive(Event)]
 struct PlayerMoves {
-    direction: Direction2d,
-    dashing: bool,
+    direction: Option<Direction2d>,
+    running: bool,
+}
+
+fn player_idles(
+    query: Query<&ActionState<PlayerAction>, With<Player>>,
+    mut event_writer: EventWriter<PlayerMoves>,
+) {
+    let action_state = query.single();
+
+    for input_direction in PlayerAction::DIRECTIONS {
+        if action_state.pressed(&input_direction) {
+            return
+        }
+    }
+
+    event_writer.send(PlayerMoves {
+        direction: None,
+        running: false,
+    });
 }
 
 fn player_walks(
@@ -185,13 +212,13 @@ fn player_walks(
 
     if let Ok(direction) = net_direction {
         event_writer.send(PlayerMoves {
-            direction,
-            dashing: false,
+            direction: Some(direction),
+            running: false,
         });
     }
 }
 
-fn player_dashes(
+fn player_runs(
     query: Query<&ActionState<PlayerAction>, With<Player>>,
     mut event_writer: EventWriter<PlayerMoves>,
 ) {
@@ -211,8 +238,8 @@ fn player_dashes(
         let net_direction = Direction2d::new(direction_vector);
         if let Ok(direction) = net_direction {
             event_writer.send(PlayerMoves {
-                direction,
-                dashing: true,
+                direction: Some(direction),
+                running: true,
             });
         }
     }
@@ -220,7 +247,7 @@ fn player_dashes(
 
 fn movement(
     mut commands: Commands,
-    mut query: Query<&mut Transform, With<Player>>,
+    mut query: Query<(&mut Transform, &mut Sprite), With<Player>>,
     mut player_moves: EventReader<PlayerMoves>,
     mut next_state: ResMut<NextState<PlayerState>>,
     time: Res<Time>,
@@ -229,20 +256,25 @@ fn movement(
         return;
     }
 
-    let mut transform = query.single_mut();
-    next_state.set(PlayerState::Idle);
+    let (mut transform, mut sprite) = query.single_mut();
 
     for event in player_moves.read() {
-        let PlayerMoves { direction, dashing } = event;
+        let PlayerMoves { direction, running } = event;
         {
-            if *dashing {
-                next_state.set(PlayerState::Running);
+            if direction.is_none() {
+                next_state.set(PlayerState::Idle);
             } else {
-                next_state.set(PlayerState::Walking);
+                if *running {
+                    next_state.set(PlayerState::Running);
+                } else {
+                    next_state.set(PlayerState::Walking);
+                }
+                let direction = direction.unwrap();
+                sprite.flip_x = direction.x < 0.;
+                transform.translation += Vec3::new(direction.x, direction.y, 0.0)
+                    * time.delta_seconds()
+                    * if *running { RUN_SPEED } else { WALK_SPEED };
             }
-            transform.translation += Vec3::new(direction.x, direction.y, 0.0)
-                * time.delta_seconds()
-                * if *dashing { RUN_SPEED } else { WALK_SPEED };
         }
     }
 }
