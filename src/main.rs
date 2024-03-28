@@ -36,7 +36,7 @@ fn main() {
             RapierDebugRenderPlugin::default(),
         ))
         .add_plugins(PlayerPlugin)
-        .add_systems(Startup, (setup_camera, setup_ground))
+        .add_systems(Startup, (setup_camera, setup_ground, setup_walls))
         .add_systems(Update, animate_sprites)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
@@ -70,4 +70,48 @@ fn setup_ground(
         RigidBody::Fixed,
         Collider::cuboid(GROUND_SIZE_WIDTH / 2., GROUND_SIZE_HEIGHT / 2.)
     ));
+}
+
+fn setup_walls(
+    mut commands: Commands,
+) {
+    // Vertical walls
+    for (x, y) in [
+        (WINDOW_WIDTH/2., 0.),
+        (-WINDOW_WIDTH/2., 0.),
+    ] {
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_translation(Vec3::new(x, y, 0.)),
+                sprite: Sprite {
+                    color: Color::RED,
+                    custom_size: Some(Vec2::new(2., WINDOW_HEIGHT)),
+                    ..default()
+                },
+                ..default()
+            },
+            RigidBody::Fixed,
+            Collider::cuboid(1., WINDOW_HEIGHT / 2.)
+        ));
+    }
+
+    // Horizontal walls
+    for (x, y) in [
+        (0., WINDOW_HEIGHT/2.),
+        (0., (-WINDOW_HEIGHT/2.) + GROUND_OFFSET.y * 2.),
+    ] {
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_translation(Vec3::new(x, y, 0.)),
+                sprite: Sprite {
+                    color: Color::RED,
+                    custom_size: Some(Vec2::new(WINDOW_WIDTH, 2.)),
+                    ..default()
+                },
+                ..default()
+            },
+            RigidBody::Fixed,
+            Collider::cuboid(WINDOW_WIDTH / 2., 1.)
+        ));
+    }
 }
