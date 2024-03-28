@@ -10,6 +10,7 @@ const RUN_SPEED: f32 = 150.;
 
 const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
 const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
+const KICK_FRAMES: AnimationIndices = AnimationIndices { first: 11, last: 12 };
 const RUN_FRAMES: AnimationIndices = AnimationIndices {
     first: 18,
     last: 23,
@@ -21,6 +22,7 @@ enum PlayerState {
     Idle,
     Walking,
     Running,
+    Kicking,
 }
 
 fn log_transitions(mut transitions: EventReader<StateTransitionEvent<PlayerState>>) {
@@ -37,9 +39,10 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<PlayerState>()
             .add_event::<PlayerMoves>()
+            .add_event::<PlayerKicks>()
             .add_plugins(InputManagerPlugin::<PlayerAction>::default())
             .add_systems(Startup, spawn_player)
-            .add_systems(FixedUpdate, (player_idles, player_walks, player_runs))
+            .add_systems(FixedUpdate, (player_idles, player_walks, player_runs, player_kicks))
             .add_systems(
                 Update,
                 (
@@ -48,6 +51,7 @@ impl Plugin for PlayerPlugin {
                     idle_animation.run_if(in_state(PlayerState::Idle)),
                     run_animation.run_if(in_state(PlayerState::Running)),
                     walk_animation.run_if(in_state(PlayerState::Walking)),
+                    kick_animation.run_if(in_state(PlayerState::Kicking)),
                 ),
             );
     }
@@ -65,6 +69,7 @@ enum PlayerAction {
     // Actions
     Walk,
     Run,
+    Kick,
 }
 
 impl PlayerAction {
@@ -140,6 +145,9 @@ impl PlayerBundle {
         input_map.insert(Run, KeyCode::ShiftRight);
         input_map.insert(Run, GamepadButtonType::East);
 
+        input_map.insert(Kick, KeyCode::Space);
+        input_map.insert(Kick, GamepadButtonType::South);
+
         input_map
     }
 }
@@ -174,9 +182,12 @@ struct PlayerMoves {
     running: bool,
 }
 
+#[derive(Event)]
+struct PlayerKicks;
+
 fn player_idles(
     query: Query<&ActionState<PlayerAction>, With<Player>>,
-    mut event_writer: EventWriter<PlayerMoves>,
+    mut next_state: ResMut<NextState<PlayerState>>,
 ) {
     let action_state = query.single();
 
@@ -186,10 +197,7 @@ fn player_idles(
         }
     }
 
-    event_writer.send(PlayerMoves {
-        direction: None,
-        running: false,
-    });
+    next_state.set(PlayerState::Idle);
 }
 
 fn player_walks(
@@ -245,8 +253,18 @@ fn player_runs(
     }
 }
 
+fn player_kicks(
+    query: Query<&ActionState<PlayerAction>, With<Player>>,
+    mut next_state: ResMut<NextState<PlayerState>>
+) {
+    let action_state = query.single();
+
+    if action_state.pressed(&PlayerAction::Kick) {
+        next_state.set(PlayerState::Kicking);
+    }
+}
+
 fn movement(
-    mut commands: Commands,
     mut query: Query<(&mut Transform, &mut Sprite), With<Player>>,
     mut player_moves: EventReader<PlayerMoves>,
     mut next_state: ResMut<NextState<PlayerState>>,
@@ -261,20 +279,16 @@ fn movement(
     for event in player_moves.read() {
         let PlayerMoves { direction, running } = event;
         {
-            if direction.is_none() {
-                next_state.set(PlayerState::Idle);
+            if *running {
+                next_state.set(PlayerState::Running);
             } else {
-                if *running {
-                    next_state.set(PlayerState::Running);
-                } else {
-                    next_state.set(PlayerState::Walking);
-                }
-                let direction = direction.unwrap();
-                sprite.flip_x = direction.x < 0.;
-                transform.translation += Vec3::new(direction.x, direction.y, 0.0)
-                    * time.delta_seconds()
-                    * if *running { RUN_SPEED } else { WALK_SPEED };
+                next_state.set(PlayerState::Walking);
             }
+            let direction = direction.unwrap();
+            sprite.flip_x = direction.x < 0.;
+            transform.translation += Vec3::new(direction.x, direction.y, 0.0)
+                * time.delta_seconds()
+                * if *running { RUN_SPEED } else { WALK_SPEED };
         }
     }
 }
@@ -324,5 +338,22 @@ fn run_animation(
     entity.insert(RUN_FRAMES);
     if atlas.index < RUN_FRAMES.first || atlas.index > RUN_FRAMES.last {
         atlas.index = RUN_FRAMES.first;
+    }
+}
+
+fn kick_animation(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut TextureAtlas), With<Player>>,
+) {
+    if query.is_empty() {
+        return;
+    }
+    info!("kicking");
+
+    let (entity, mut atlas) = query.single_mut();
+    let mut entity = commands.entity(entity);
+    entity.insert(KICK_FRAMES);
+    if atlas.index < KICK_FRAMES.first || atlas.index > KICK_FRAMES.last {
+        atlas.index = KICK_FRAMES.first;
     }
 }
