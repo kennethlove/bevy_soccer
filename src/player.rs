@@ -11,10 +11,7 @@ const RUN_SPEED: f32 = 150.;
 const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
 const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
 const KICK_FRAMES: AnimationIndices = AnimationIndices { first: 11, last: 12 };
-const RUN_FRAMES: AnimationIndices = AnimationIndices {
-    first: 18,
-    last: 23,
-};
+const RUN_FRAMES: AnimationIndices = AnimationIndices { first: 18, last: 23 };
 
 #[derive(Clone, Component, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
 enum PlayerState {
@@ -39,7 +36,6 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<PlayerState>()
             .add_event::<PlayerMoves>()
-            .add_event::<PlayerKicks>()
             .add_plugins(InputManagerPlugin::<PlayerAction>::default())
             .add_systems(Startup, spawn_player)
             .add_systems(FixedUpdate, (player_idles, player_walks, player_runs, player_kicks))
@@ -180,10 +176,18 @@ fn spawn_player(
 struct PlayerMoves {
     direction: Option<Direction2d>,
     running: bool,
+    kicking: bool,
 }
 
-#[derive(Event)]
-struct PlayerKicks;
+impl Default for PlayerMoves {
+    fn default() -> Self {
+        Self {
+            direction: None,
+            running: false,
+            kicking: false,
+        }
+    }
+}
 
 fn player_idles(
     query: Query<&ActionState<PlayerAction>, With<Player>>,
@@ -221,7 +225,7 @@ fn player_walks(
     if let Ok(direction) = net_direction {
         event_writer.send(PlayerMoves {
             direction: Some(direction),
-            running: false,
+            ..default()
         });
     }
 }
@@ -248,6 +252,7 @@ fn player_runs(
             event_writer.send(PlayerMoves {
                 direction: Some(direction),
                 running: true,
+                ..default()
             });
         }
     }
@@ -255,12 +260,16 @@ fn player_runs(
 
 fn player_kicks(
     query: Query<&ActionState<PlayerAction>, With<Player>>,
-    mut next_state: ResMut<NextState<PlayerState>>
+    mut event_writer: EventWriter<PlayerMoves>,
 ) {
     let action_state = query.single();
 
     if action_state.pressed(&PlayerAction::Kick) {
-        next_state.set(PlayerState::Kicking);
+            event_writer.send(PlayerMoves {
+                direction: None,
+                kicking: true,
+                ..default()
+            });
     }
 }
 
@@ -277,18 +286,21 @@ fn movement(
     let (mut transform, mut sprite) = query.single_mut();
 
     for event in player_moves.read() {
-        let PlayerMoves { direction, running } = event;
+        let PlayerMoves { direction, running, kicking } = event;
         {
             if *running {
                 next_state.set(PlayerState::Running);
+            } else if *kicking {
+                next_state.set(PlayerState::Kicking);
             } else {
                 next_state.set(PlayerState::Walking);
             }
-            let direction = direction.unwrap();
-            sprite.flip_x = direction.x < 0.;
-            transform.translation += Vec3::new(direction.x, direction.y, 0.0)
-                * time.delta_seconds()
-                * if *running { RUN_SPEED } else { WALK_SPEED };
+            if let Some(direction) = direction {
+                sprite.flip_x = direction.x < 0.;
+                transform.translation += Vec3::new(direction.x, direction.y, 0.0)
+                    * time.delta_seconds()
+                    * if *running { RUN_SPEED } else { WALK_SPEED };
+            }
         }
     }
 }
@@ -348,7 +360,6 @@ fn kick_animation(
     if query.is_empty() {
         return;
     }
-    info!("kicking");
 
     let (entity, mut atlas) = query.single_mut();
     let mut entity = commands.entity(entity);
