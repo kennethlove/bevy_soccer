@@ -10,8 +10,14 @@ const RUN_SPEED: f32 = 150.;
 
 const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
 const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
-const KICK_FRAMES: AnimationIndices = AnimationIndices { first: 11, last: 12 };
-const RUN_FRAMES: AnimationIndices = AnimationIndices { first: 18, last: 23 };
+const KICK_FRAMES: AnimationIndices = AnimationIndices {
+    first: 12,
+    last: 12,
+};
+const RUN_FRAMES: AnimationIndices = AnimationIndices {
+    first: 18,
+    last: 23,
+};
 
 #[derive(Clone, Component, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
 enum PlayerState {
@@ -38,7 +44,10 @@ impl Plugin for PlayerPlugin {
             .add_event::<PlayerMoves>()
             .add_plugins(InputManagerPlugin::<PlayerAction>::default())
             .add_systems(Startup, spawn_player)
-            .add_systems(FixedUpdate, (player_idles, player_walks, player_runs, player_kicks))
+            .add_systems(
+                FixedUpdate,
+                (player_idles, player_walks, player_runs, player_kicks),
+            )
             .add_systems(
                 Update,
                 (
@@ -197,7 +206,7 @@ fn player_idles(
 
     for input_direction in PlayerAction::DIRECTIONS {
         if action_state.pressed(&input_direction) {
-            return
+            return;
         }
     }
 
@@ -265,11 +274,11 @@ fn player_kicks(
     let action_state = query.single();
 
     if action_state.pressed(&PlayerAction::Kick) {
-            event_writer.send(PlayerMoves {
-                direction: None,
-                kicking: true,
-                ..default()
-            });
+        event_writer.send(PlayerMoves {
+            direction: None,
+            kicking: true,
+            ..default()
+        });
     }
 }
 
@@ -286,7 +295,11 @@ fn movement(
     let (mut transform, mut sprite) = query.single_mut();
 
     for event in player_moves.read() {
-        let PlayerMoves { direction, running, kicking } = event;
+        let PlayerMoves {
+            direction,
+            running,
+            kicking,
+        } = event;
         {
             if *running {
                 next_state.set(PlayerState::Running);
@@ -295,11 +308,14 @@ fn movement(
             } else {
                 next_state.set(PlayerState::Walking);
             }
+
             if let Some(direction) = direction {
-                sprite.flip_x = direction.x < 0.;
-                transform.translation += Vec3::new(direction.x, direction.y, 0.0)
-                    * time.delta_seconds()
-                    * if *running { RUN_SPEED } else { WALK_SPEED };
+                if !*kicking {
+                    sprite.flip_x = direction.x < 0.;
+                    transform.translation += Vec3::new(direction.x, direction.y, 0.0)
+                        * time.delta_seconds()
+                        * if *running { RUN_SPEED } else { WALK_SPEED };
+                }
             }
         }
     }
