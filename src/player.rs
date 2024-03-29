@@ -198,7 +198,7 @@ fn spawn_player(
     ));
 }
 
-#[derive(Event)]
+#[derive(Debug, Event)]
 struct PlayerMoves {
     direction: Option<Direction2d>,
     running: bool,
@@ -318,12 +318,11 @@ fn movement(
             kicking,
         } = event;
         {
+            next_state.set(PlayerState::Walking);
             if *running {
                 next_state.set(PlayerState::Running);
             } else if *kicking {
                 next_state.set(PlayerState::Kicking);
-            } else {
-                next_state.set(PlayerState::Walking);
             }
 
             if let Some(direction) = direction {
