@@ -12,8 +12,7 @@ impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(Startup, spawn_ball)
-            .add_systems(FixedUpdate, (get_kicked, hit_walls))
-            .add_systems(Update, display_events);
+            .add_systems(FixedUpdate, (get_kicked, hit_walls));
     }
 }
 
@@ -52,7 +51,7 @@ fn hit_walls(
             for wall in &walls {
                 if wall == *entity2 {
                     ball.insert(ExternalImpulse {
-                        impulse: Vec2::new(0., 100.),
+                        impulse: Vec2::new(0., 10.),
                         torque_impulse: 0.,
                     });
                 }
