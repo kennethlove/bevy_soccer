@@ -53,7 +53,13 @@ impl Plugin for PlayerPlugin {
             .add_systems(Startup, spawn_player)
             .add_systems(
                 FixedUpdate,
-                (player_idles, player_walks, player_runs, player_kicks, update_sprite_direction,),
+                (
+                    player_idles,
+                    player_walks,
+                    player_runs,
+                    player_kicks,
+                    update_sprite_direction,
+                ),
             )
             .add_systems(
                 Update,
@@ -318,19 +324,24 @@ fn movement(
             kicking,
         } = event;
         {
-            next_state.set(PlayerState::Walking);
             if *running {
                 next_state.set(PlayerState::Running);
             } else if *kicking {
                 next_state.set(PlayerState::Kicking);
+            } else {
+                next_state.set(PlayerState::Walking);
             }
 
             if let Some(direction) = direction {
                 match player.translation {
-                    _ => player.translation = {
-                        Some(Vec2::new(direction.x, direction.y)
-                            * time.delta_seconds()
-                            * if *running { RUN_SPEED } else { WALK_SPEED })
+                    _ => {
+                        player.translation = {
+                            Some(
+                                Vec2::new(direction.x, direction.y)
+                                    * time.delta_seconds()
+                                    * if *running { RUN_SPEED } else { WALK_SPEED },
+                            )
+                        }
                     }
                 }
             }
@@ -377,6 +388,7 @@ fn run_animation(
     if query.is_empty() {
         return;
     }
+    info!("here");
 
     let (entity, mut atlas) = query.single_mut();
     let mut entity = commands.entity(entity);
@@ -419,9 +431,7 @@ fn update_direction(
     }
 }
 
-fn update_sprite_direction (
-    mut query: Query<(&mut Sprite, &Direction), With<Player>>,
-) {
+fn update_sprite_direction(mut query: Query<(&mut Sprite, &Direction), With<Player>>) {
     if query.is_empty() {
         return;
     }
