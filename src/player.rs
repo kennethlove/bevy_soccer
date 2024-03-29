@@ -3,6 +3,7 @@ use crate::{
     constants::*,
 };
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
 const WALK_SPEED: f32 = 75.;
@@ -28,6 +29,12 @@ enum PlayerState {
     Kicking,
 }
 
+#[derive(Component)]
+enum Direction {
+    Left,
+    Right,
+}
+
 fn log_transitions(mut transitions: EventReader<StateTransitionEvent<PlayerState>>) {
     for transition in transitions.read() {
         info!(
@@ -46,13 +53,14 @@ impl Plugin for PlayerPlugin {
             .add_systems(Startup, spawn_player)
             .add_systems(
                 FixedUpdate,
-                (player_idles, player_walks, player_runs, player_kicks),
+                (player_idles, player_walks, player_runs, player_kicks, update_sprite_direction,),
             )
             .add_systems(
                 Update,
                 (
                     log_transitions,
                     movement,
+                    update_direction,
                     idle_animation.run_if(in_state(PlayerState::Idle)),
                     run_animation.run_if(in_state(PlayerState::Running)),
                     walk_animation.run_if(in_state(PlayerState::Walking)),
@@ -97,21 +105,22 @@ impl PlayerAction {
 }
 
 #[derive(Component)]
-struct Player;
+pub struct Player;
 
 #[derive(Bundle)]
 struct PlayerBundle {
     sprite_bundle: SpriteSheetBundle,
     player: Player,
     input_manager: InputManagerBundle<PlayerAction>,
+    direction: Direction,
 }
 
 impl PlayerBundle {
     fn default() -> Self {
-        let translation = Vec3::new(0., 0., 1.);
+        let translation = Vec3::new(GROUND_OFFSET.x, GROUND_OFFSET.y, 5.);
         Self {
             sprite_bundle: SpriteSheetBundle {
-                transform: Transform::from_translation(translation + GROUND_OFFSET),
+                transform: Transform::from_translation(translation),
                 sprite: Sprite {
                     color: Color::RED,
                     custom_size: Vec2::new(50., 50.).into(),
@@ -121,6 +130,7 @@ impl PlayerBundle {
             },
             player: Player,
             input_manager: InputManagerBundle::with_map(PlayerBundle::default_input_map()),
+            direction: Direction::Right,
         }
     }
 
@@ -173,12 +183,29 @@ fn spawn_player(
         layout: texture_atlas_layout,
         index: IDLE_FRAMES.first,
     };
-    let mut player = commands.spawn(player);
-    player.insert(IDLE_FRAMES);
-    player.insert(AnimationTimer(Timer::from_seconds(
-        0.1,
-        TimerMode::Repeating,
-    )));
+
+    commands.spawn((
+        player,
+        IDLE_FRAMES,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        KinematicCharacterController {
+            apply_impulse_to_dynamic_bodies: true,
+            custom_mass: Some(68.),
+            ..default()
+        },
+        RigidBody::Dynamic,
+        Collider::cuboid(12., 17.),
+    ));
+    // player.insert(IDLE_FRAMES);
+    // player.insert(AnimationTimer(Timer::from_seconds(
+    //     0.1,
+    //     TimerMode::Repeating,
+    // )));
+    // player.insert(KinematicCharacterController::default());
+    // player.insert(Direction::Right);
+    // player.insert(Player);
+    // player.insert(RigidBody::Dynamic);
+    // player.insert(Collider::cuboid(12., 17.));
 }
 
 #[derive(Event)]
@@ -283,7 +310,7 @@ fn player_kicks(
 }
 
 fn movement(
-    mut query: Query<(&mut Transform, &mut Sprite), With<Player>>,
+    mut query: Query<&mut KinematicCharacterController, With<Player>>,
     mut player_moves: EventReader<PlayerMoves>,
     mut next_state: ResMut<NextState<PlayerState>>,
     time: Res<Time>,
@@ -292,7 +319,7 @@ fn movement(
         return;
     }
 
-    let (mut transform, mut sprite) = query.single_mut();
+    let mut player = query.single_mut();
 
     for event in player_moves.read() {
         let PlayerMoves {
@@ -310,10 +337,13 @@ fn movement(
             }
 
             if let Some(direction) = direction {
-                sprite.flip_x = direction.x < 0.;
-                transform.translation += Vec3::new(direction.x, direction.y, 0.0)
-                    * time.delta_seconds()
-                    * if *running { RUN_SPEED } else { WALK_SPEED };
+                match player.translation {
+                    _ => player.translation = {
+                        Some(Vec2::new(direction.x, direction.y)
+                            * time.delta_seconds()
+                            * if *running { RUN_SPEED } else { WALK_SPEED })
+                    }
+                }
             }
         }
     }
@@ -380,5 +410,36 @@ fn kick_animation(
     entity.insert(KICK_FRAMES);
     if atlas.index < KICK_FRAMES.first || atlas.index > KICK_FRAMES.last {
         atlas.index = KICK_FRAMES.first;
+    }
+}
+
+fn update_direction(
+    mut commands: Commands,
+    query: Query<(Entity, &KinematicCharacterControllerOutput)>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (entity, controller) = query.single();
+
+    if controller.desired_translation.x > 0. {
+        commands.entity(entity).insert(Direction::Right);
+    } else if controller.desired_translation.x < 0. {
+        commands.entity(entity).insert(Direction::Left);
+    }
+}
+
+fn update_sprite_direction (
+    mut query: Query<(&mut Sprite, &Direction), With<Player>>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let (mut sprite, direction) = query.single_mut();
+    match direction {
+        Direction::Left => sprite.flip_x = true,
+        Direction::Right => sprite.flip_x = false,
     }
 }
