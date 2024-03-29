@@ -196,16 +196,6 @@ fn spawn_player(
         RigidBody::Dynamic,
         Collider::cuboid(12., 17.),
     ));
-    // player.insert(IDLE_FRAMES);
-    // player.insert(AnimationTimer(Timer::from_seconds(
-    //     0.1,
-    //     TimerMode::Repeating,
-    // )));
-    // player.insert(KinematicCharacterController::default());
-    // player.insert(Direction::Right);
-    // player.insert(Player);
-    // player.insert(RigidBody::Dynamic);
-    // player.insert(Collider::cuboid(12., 17.));
 }
 
 #[derive(Event)]
