@@ -34,6 +34,7 @@ fn spawn_ball(
         },
         Ball,
         RigidBody::Dynamic,
+        AdditionalMassProperties::Mass(1.0),
         Collider::ball(10.),
         ActiveEvents::COLLISION_EVENTS,
         ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,

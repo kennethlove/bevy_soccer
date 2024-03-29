@@ -190,7 +190,7 @@ fn spawn_player(
         AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
         KinematicCharacterController {
             apply_impulse_to_dynamic_bodies: true,
-            custom_mass: Some(68.),
+            custom_mass: Some(100.),
             ..default()
         },
         RigidBody::Dynamic,
