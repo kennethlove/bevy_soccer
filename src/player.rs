@@ -35,14 +35,6 @@ enum Direction {
     Right,
 }
 
-fn log_transitions(mut transitions: EventReader<StateTransitionEvent<PlayerState>>) {
-    for transition in transitions.read() {
-        info!(
-            "transition: {:?} => {:?}",
-            transition.before, transition.after
-        );
-    }
-}
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
