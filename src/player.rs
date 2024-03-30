@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-const WALK_SPEED: f32 = 75.;
-const RUN_SPEED: f32 = 150.;
+const WALK_SPEED: f32 = 100.;
+const RUN_SPEED: f32 = 250.;
 
 const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
 const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
@@ -55,7 +55,6 @@ impl Plugin for PlayerPlugin {
             .add_systems(
                 Update,
                 (
-                    log_transitions,
                     movement,
                     update_direction,
                     idle_animation.run_if(in_state(PlayerState::Idle)),
@@ -190,7 +189,7 @@ fn spawn_player(
             custom_mass: Some(100.),
             ..default()
         },
-        RigidBody::Dynamic,
+        RigidBody::KinematicPositionBased,
         Collider::cuboid(12., 17.),
     ));
 }
@@ -338,7 +337,6 @@ fn run_animation(
     if query.is_empty() {
         return;
     }
-    info!("here");
 
     let (entity, mut atlas) = query.single_mut();
     let mut entity = commands.entity(entity);
