@@ -333,16 +333,12 @@ fn movement(
             }
 
             if let Some(direction) = direction {
-                match player.translation {
-                    _ => {
-                        player.translation = {
-                            Some(
-                                Vec2::new(direction.x, direction.y)
-                                    * time.delta_seconds()
-                                    * if *running { RUN_SPEED } else { WALK_SPEED },
-                            )
-                        }
-                    }
+                player.translation = {
+                    Some(
+                        Vec2::new(direction.x, direction.y)
+                            * time.delta_seconds()
+                            * if *running { RUN_SPEED } else { WALK_SPEED },
+                    )
                 }
             }
         }
