@@ -11,10 +11,6 @@ const RUN_SPEED: f32 = 250.;
 
 const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
 const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
-const KICK_FRAMES: AnimationIndices = AnimationIndices {
-    first: 11,
-    last: 13,
-};
 const RUN_FRAMES: AnimationIndices = AnimationIndices {
     first: 18,
     last: 23,
@@ -26,7 +22,6 @@ enum PlayerState {
     Idle,
     Walking,
     Running,
-    Kicking,
 }
 
 #[derive(Component)]
@@ -45,12 +40,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(Startup, spawn_player)
             .add_systems(
                 FixedUpdate,
-                (
-                    player_idles,
-                    player_moves,
-                    player_kicks,
-                    update_sprite_direction,
-                ),
+                (player_idles, player_moves, update_sprite_direction),
             )
             .add_systems(
                 Update,
@@ -60,14 +50,13 @@ impl Plugin for PlayerPlugin {
                     idle_animation.run_if(in_state(PlayerState::Idle)),
                     walk_animation.run_if(in_state(PlayerState::Walking)),
                     run_animation.run_if(in_state(PlayerState::Running)),
-                    kick_animation.run_if(in_state(PlayerState::Kicking)),
                 ),
             );
     }
 }
 
 #[derive(Actionlike, PartialEq, Eq, Hash, Clone, Copy, Debug, Reflect)]
-enum PlayerAction {
+pub enum PlayerAction {
     // Movement
     Idle,
     Up,
@@ -78,7 +67,6 @@ enum PlayerAction {
     // Actions
     Walk,
     Run,
-    Kick,
 }
 
 impl PlayerAction {
@@ -156,9 +144,6 @@ impl PlayerBundle {
         input_map.insert(Run, KeyCode::ShiftRight);
         input_map.insert(Run, GamepadButtonType::East);
 
-        input_map.insert(Kick, KeyCode::Space);
-        input_map.insert(Kick, GamepadButtonType::South);
-
         input_map
     }
 }
@@ -198,7 +183,6 @@ fn spawn_player(
 struct PlayerMoves {
     direction: Option<Direction2d>,
     running: bool,
-    kicking: bool,
 }
 
 fn player_idles(
@@ -243,21 +227,6 @@ fn player_moves(
     }
 }
 
-fn player_kicks(
-    query: Query<&ActionState<PlayerAction>, With<Player>>,
-    mut event_writer: EventWriter<PlayerMoves>,
-) {
-    let action_state = query.single();
-
-    if action_state.pressed(&PlayerAction::Kick) {
-        event_writer.send(PlayerMoves {
-            direction: None,
-            kicking: true,
-            ..default()
-        });
-    }
-}
-
 fn movement(
     mut query: Query<&mut KinematicCharacterController, With<Player>>,
     mut player_moves: EventReader<PlayerMoves>,
@@ -271,16 +240,10 @@ fn movement(
     let mut player = query.single_mut();
 
     for event in player_moves.read() {
-        let PlayerMoves {
-            direction,
-            running,
-            kicking,
-        } = event;
+        let PlayerMoves { direction, running } = event;
         {
             if *running {
                 next_state.set(PlayerState::Running);
-            } else if *kicking {
-                next_state.set(PlayerState::Kicking);
             } else {
                 next_state.set(PlayerState::Walking);
             }
@@ -343,22 +306,6 @@ fn run_animation(
     entity.insert(RUN_FRAMES);
     if atlas.index < RUN_FRAMES.first || atlas.index > RUN_FRAMES.last {
         atlas.index = RUN_FRAMES.first;
-    }
-}
-
-fn kick_animation(
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut TextureAtlas), With<Player>>,
-) {
-    if query.is_empty() {
-        return;
-    }
-
-    let (entity, mut atlas) = query.single_mut();
-    let mut entity = commands.entity(entity);
-    entity.insert(KICK_FRAMES);
-    if atlas.index < KICK_FRAMES.first || atlas.index > KICK_FRAMES.last {
-        atlas.index = KICK_FRAMES.first;
     }
 }
 
