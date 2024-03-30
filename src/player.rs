@@ -55,8 +55,7 @@ impl Plugin for PlayerPlugin {
                 FixedUpdate,
                 (
                     player_idles,
-                    player_walks,
-                    player_runs,
+                    player_moves,
                     player_kicks,
                     update_sprite_direction,
                 ),
@@ -68,8 +67,8 @@ impl Plugin for PlayerPlugin {
                     movement,
                     update_direction,
                     idle_animation.run_if(in_state(PlayerState::Idle)),
-                    run_animation.run_if(in_state(PlayerState::Running)),
                     walk_animation.run_if(in_state(PlayerState::Walking)),
+                    run_animation.run_if(in_state(PlayerState::Running)),
                     kick_animation.run_if(in_state(PlayerState::Kicking)),
                 ),
             );
@@ -204,21 +203,11 @@ fn spawn_player(
     ));
 }
 
-#[derive(Debug, Event)]
+#[derive(Debug, Default, Event)]
 struct PlayerMoves {
     direction: Option<Direction2d>,
     running: bool,
     kicking: bool,
-}
-
-impl Default for PlayerMoves {
-    fn default() -> Self {
-        Self {
-            direction: None,
-            running: false,
-            kicking: false,
-        }
-    }
 }
 
 fn player_idles(
@@ -236,7 +225,7 @@ fn player_idles(
     next_state.set(PlayerState::Idle);
 }
 
-fn player_walks(
+fn player_moves(
     query: Query<&ActionState<PlayerAction>, With<Player>>,
     mut event_writer: EventWriter<PlayerMoves>,
 ) {
@@ -257,36 +246,9 @@ fn player_walks(
     if let Ok(direction) = net_direction {
         event_writer.send(PlayerMoves {
             direction: Some(direction),
+            running: action_state.pressed(&PlayerAction::Run),
             ..default()
         });
-    }
-}
-
-fn player_runs(
-    query: Query<&ActionState<PlayerAction>, With<Player>>,
-    mut event_writer: EventWriter<PlayerMoves>,
-) {
-    let action_state = query.single();
-
-    if action_state.pressed(&PlayerAction::Run) {
-        let mut direction_vector = Vec2::ZERO;
-
-        for input_direction in PlayerAction::DIRECTIONS {
-            if action_state.pressed(&input_direction) {
-                if let Some(direction) = input_direction.direction() {
-                    direction_vector += *direction;
-                }
-            }
-        }
-
-        let net_direction = Direction2d::new(direction_vector);
-        if let Ok(direction) = net_direction {
-            event_writer.send(PlayerMoves {
-                direction: Some(direction),
-                running: true,
-                ..default()
-            });
-        }
     }
 }
 
