@@ -10,8 +10,7 @@ pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(Startup, spawn_ball)
+        app.add_systems(Startup, spawn_ball)
             .add_systems(FixedUpdate, (get_kicked, hit_walls));
     }
 }
@@ -29,13 +28,17 @@ fn spawn_ball(
         MaterialMesh2dBundle {
             mesh,
             material: materials.add(Color::ORANGE),
-            transform: Transform::from_translation(Vec3::new(0., -GROUND_OFFSET.y, 0.)),
+            transform: Transform::from_translation(Vec3::new(0., -GROUND_OFFSET.y, 1.)),
             ..default()
         },
         Ball,
         RigidBody::Dynamic,
         AdditionalMassProperties::Mass(1.0),
         Collider::ball(10.),
+        Restitution {
+            coefficient: 0.7,
+            combine_rule: CoefficientCombineRule::Average,
+        },
         ActiveEvents::COLLISION_EVENTS,
         ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
     ));
@@ -52,7 +55,7 @@ fn hit_walls(
             for wall in &walls {
                 if wall == *entity2 {
                     ball.insert(ExternalImpulse {
-                        impulse: Vec2::new(0., 10.),
+                        impulse: Vec2::new(0., 0.),
                         torque_impulse: 0.,
                     });
                 }
