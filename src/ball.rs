@@ -4,14 +4,14 @@ use bevy::{
 };
 use bevy_rapier2d::prelude::*;
 
-use crate::{arena::Wall, constants::GROUND_OFFSET, player::Player};
+use crate::{arena::Wall, constants::GROUND_OFFSET};
 
 pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_ball)
-            .add_systems(FixedUpdate, (get_kicked, hit_walls));
+            .add_systems(FixedUpdate, hit_walls);
     }
 }
 
@@ -59,25 +59,6 @@ fn hit_walls(
                         torque_impulse: 0.,
                     });
                 }
-            }
-        }
-    }
-}
-
-fn get_kicked(
-    mut commands: Commands,
-    mut collision_events: EventReader<CollisionEvent>,
-    player: Query<Entity, With<Player>>,
-) {
-    let player = player.single();
-    for collision_event in collision_events.read() {
-        if let CollisionEvent::Started(entity1, _entity2, _flags) = collision_event {
-            if player == *_entity2 {
-                let mut ball = commands.entity(*entity1);
-                ball.insert(ExternalImpulse {
-                    impulse: Vec2::new(10., 20.),
-                    torque_impulse: 1.,
-                });
             }
         }
     }
