@@ -9,8 +9,14 @@ impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<GoalEvent>()
             .add_systems(Startup, (setup_ground, setup_goals, setup_walls))
-            .add_systems(Update, touch_goal);
+            .add_systems(Update, (touch_goal, score_goal));
     }
+}
+
+#[derive(Event)]
+pub struct GoalEvent {
+    pub score_amount: i32,
+    pub goal: Entity,
 }
 
 #[derive(Component)]
@@ -80,10 +86,16 @@ fn touch_goal(
     }
 }
 
-#[derive(Event)]
-pub struct GoalEvent {
-    pub score_amount: i32,
-    pub goal: Entity,
+fn score_goal(mut goal_events: EventReader<GoalEvent>, mut pkv: ResMut<PkvStore>) {
+    for goal_event in goal_events.read() {
+        if let Ok(mut score) = pkv.get::<i32>("score") {
+            score += goal_event.score_amount;
+            pkv.set("score", &score).expect("Failed to set score");
+        } else {
+            let score = goal_event.score_amount;
+            pkv.set("score", &score).expect("Failed to set score");
+        }
+    }
 }
 
 fn setup_ground(mut commands: Commands, mut rapier_config: ResMut<RapierConfiguration>) {
