@@ -9,8 +9,10 @@ use bevy_rapier2d::prelude::*;
 use bevy_soccer::animation::AnimationPlugin;
 use bevy_soccer::arena::ArenaPlugin;
 use bevy_soccer::ball::BallPlugin;
+use bevy_soccer::camera::CameraPlugin;
 use bevy_soccer::constants::*;
 use bevy_soccer::player::PlayerPlugin;
+use bevy_soccer::ui::UIPlugin;
 
 fn main() {
     App::new()
@@ -39,16 +41,15 @@ fn main() {
             RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.),
             RapierDebugRenderPlugin::default(),
         ))
-        .add_plugins(EditorPlugin::default())
-        .add_plugins((AnimationPlugin, ArenaPlugin, PlayerPlugin, BallPlugin))
-        .add_systems(Startup, setup_camera)
+        // .add_plugins(EditorPlugin::default())
+        .add_plugins((
+            AnimationPlugin,
+            ArenaPlugin,
+            BallPlugin,
+            CameraPlugin,
+            PlayerPlugin,
+            UIPlugin,
+        ))
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
-}
-
-fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_translation(Vec3::new(0., 0., 10.)),
-        ..Default::default()
-    });
 }
