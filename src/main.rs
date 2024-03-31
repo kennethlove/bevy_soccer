@@ -6,7 +6,7 @@ use bevy_kira_audio::prelude::*;
 use bevy_pkv::PkvStore;
 use bevy_rapier2d::prelude::*;
 
-use bevy_soccer::animation::animate_sprites;
+use bevy_soccer::animation::AnimationPlugin;
 use bevy_soccer::arena::ArenaPlugin;
 use bevy_soccer::ball::BallPlugin;
 use bevy_soccer::constants::*;
@@ -40,9 +40,8 @@ fn main() {
             RapierDebugRenderPlugin::default(),
         ))
         .add_plugins(EditorPlugin::default())
-        .add_plugins((ArenaPlugin, PlayerPlugin, BallPlugin))
+        .add_plugins((AnimationPlugin, ArenaPlugin, PlayerPlugin, BallPlugin))
         .add_systems(Startup, setup_camera)
-        .add_systems(Update, animate_sprites)
         .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }
