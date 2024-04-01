@@ -1,10 +1,7 @@
 use bevy::prelude::*;
 use bevy_pkv::PkvStore;
 
-use crate::{
-    camera::UI_LAYER,
-    constants::{GROUND_OFFSET, WINDOW_HEIGHT},
-};
+use crate::{camera::UI_LAYER, constants::*};
 
 pub struct UIPlugin;
 
@@ -23,7 +20,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>, pkv_store: R
 
     let text_style = TextStyle {
         color: Color::WHITE,
-        font_size: 24.0,
+        font_size: 28.0,
         font,
     };
 
@@ -32,14 +29,14 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>, pkv_store: R
             NodeBundle {
                 style: Style {
                     width: Val::Percent(100.),
-                    height: Val::Px(GROUND_OFFSET.y * 2.),
+                    height: Val::Px(UI_HEIGHT),
                     flex_direction: FlexDirection::Row,
                     justify_content: JustifyContent::SpaceEvenly,
                     align_items: AlignItems::Center,
                     margin: UiRect {
                         left: Val::Px(0.),
                         right: Val::Px(0.),
-                        top: Val::Px(WINDOW_HEIGHT - GROUND_OFFSET.y * 2.),
+                        top: Val::Px(GROUND_SIZE_HEIGHT),
                         bottom: Val::Px(0.),
                     },
                     ..default()
@@ -50,7 +47,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>, pkv_store: R
         ))
         .with_children(|parent| {
             parent.spawn((
-                TextBundle::from_section(format!("Hi Score {}", high_score), text_style.clone()),
+                TextBundle::from_section(format!("High Score {}", high_score), text_style.clone()),
                 HighScoreText,
             ));
             parent.spawn((
