@@ -1,5 +1,5 @@
 use crate::{animation::FlashingTimer, constants::*};
-use bevy::{app::AppExit, prelude::*};
+use bevy::{app::AppExit, prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_pkv::PkvStore;
 use bevy_rapier2d::prelude::*;
 
@@ -42,16 +42,21 @@ const GOAL_POSITIONS: [Vec3; 4] = [
     ), // bottom left
 ];
 
-fn setup_goals(mut commands: Commands) {
+fn setup_goals(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
     for position in GOAL_POSITIONS.iter() {
         commands.spawn((
-            SpriteBundle {
+            MaterialMesh2dBundle {
+                mesh: meshes
+                    .add(Circle {
+                        radius: GOAL_SIZE / 2.,
+                    })
+                    .into(),
                 transform: Transform::from_translation(*position),
-                sprite: Sprite {
-                    color: Color::PINK,
-                    custom_size: Some(Vec2::new(GOAL_SIZE, GOAL_SIZE)),
-                    ..default()
-                },
+                material: materials.add(Color::PINK),
                 ..default()
             },
             Goal,
