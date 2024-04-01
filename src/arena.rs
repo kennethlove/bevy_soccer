@@ -1,5 +1,5 @@
 use crate::{animation::FlashingTimer, constants::*};
-use bevy::prelude::*;
+use bevy::{app::AppExit, prelude::*};
 use bevy_pkv::PkvStore;
 use bevy_rapier2d::prelude::*;
 
@@ -9,7 +9,8 @@ impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<GoalEvent>()
             .add_systems(Startup, (setup_ground, setup_goals, setup_walls))
-            .add_systems(Update, (touch_goal, score_goal));
+            .add_systems(Update, (touch_goal, score_goal, update_high_score))
+            .add_systems(Last, clear_score);
     }
 }
 
@@ -98,6 +99,16 @@ fn score_goal(mut goal_events: EventReader<GoalEvent>, mut pkv: ResMut<PkvStore>
     }
 }
 
+fn update_high_score(mut pkv: ResMut<PkvStore>) {
+    let score = pkv.get::<i32>("score").unwrap_or(0);
+    let high_score = pkv.get::<i32>("high_score").unwrap_or(0);
+
+    if score > high_score {
+        pkv.set("high_score", &score)
+            .expect("Failed to set high score");
+    }
+}
+
 fn setup_ground(mut commands: Commands, mut rapier_config: ResMut<RapierConfiguration>) {
     rapier_config.gravity = Vec2::ZERO;
 
@@ -157,5 +168,11 @@ fn setup_walls(mut commands: Commands) {
             RigidBody::Fixed,
             Collider::cuboid(WINDOW_WIDTH / 2., 1.),
         ));
+    }
+}
+
+fn clear_score(mut pkv: ResMut<PkvStore>, mut events: EventReader<AppExit>) {
+    for _ in events.read() {
+        pkv.set("score", &0).expect("Failed to set score");
     }
 }
