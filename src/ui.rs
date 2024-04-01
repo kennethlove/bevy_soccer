@@ -47,7 +47,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>, pkv_store: R
         ))
         .with_children(|parent| {
             parent.spawn((
-                TextBundle::from_section(format!("High Score {}", high_score), text_style.clone()),
+                TextBundle::from_section(format!("Hi Score {}", high_score), text_style.clone()),
                 HighScoreText,
             ));
             parent.spawn((
