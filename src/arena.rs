@@ -14,7 +14,7 @@ impl Plugin for ArenaPlugin {
     }
 }
 
-#[derive(Event)]
+#[derive(Event, Debug)]
 pub struct GoalEvent {
     pub score_amount: i32,
     pub goal: Entity,
@@ -74,10 +74,10 @@ fn touch_goal(
     mut event_writer: EventWriter<GoalEvent>,
 ) {
     for collision_event in collision_events.read() {
-        if let CollisionEvent::Started(_, entity2, _flags) = collision_event {
+        if let CollisionEvent::Started(entity1, entity2, _flags) = collision_event {
             for goal in &goals {
-                if goal == *entity2 {
-                    let mut entity = commands.entity(*entity2);
+                if goal == *entity1 {
+                    let mut entity = commands.entity(*entity1);
                     entity.insert(FlashingTimer(Timer::from_seconds(
                         0.1,
                         TimerMode::Repeating,
