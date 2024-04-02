@@ -26,25 +26,12 @@ pub struct Ground;
 #[derive(Component)]
 pub struct Goal;
 
-const GOAL_RADIUS: f32 = 160.;
 const GOAL_HEIGHT: f32 = 160.;
 const GOAL_WIDTH: f32 = 20.;
 
 const GOAL_POSITIONS: [Vec3; 2] = [
     Vec3::new(-WINDOW_WIDTH / 2., GROUND_MIDDLE, 1.), // middle left
     Vec3::new(WINDOW_WIDTH / 2., GROUND_MIDDLE, 1.),  // middle right
-                                                      // Vec3::new(WINDOW_WIDTH / 2., WINDOW_HEIGHT / 2., 1.), // top right
-                                                      // Vec3::new(-WINDOW_WIDTH / 2., WINDOW_HEIGHT / 2., 1.), // top left
-                                                      // Vec3::new(
-                                                      //     WINDOW_WIDTH / 2.,
-                                                      //     (-WINDOW_HEIGHT / 2.) + GROUND_OFFSET.y * 2.,
-                                                      //     1.,
-                                                      // ), // bottom right
-                                                      // Vec3::new(
-                                                      //     -WINDOW_WIDTH / 2.,
-                                                      //     (-WINDOW_HEIGHT / 2.) + GROUND_OFFSET.y * 2.,
-                                                      //     1.,
-                                                      // ), // bottom left
 ];
 
 fn setup_goals(
