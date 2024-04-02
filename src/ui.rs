@@ -36,7 +36,7 @@ fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>, pkv_store: R
                     margin: UiRect {
                         left: Val::Px(0.),
                         right: Val::Px(0.),
-                        top: Val::Px(GROUND_SIZE_HEIGHT),
+                        top: Val::Px(GROUND_HEIGHT),
                         bottom: Val::Px(0.),
                     },
                     ..default()

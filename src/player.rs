@@ -99,9 +99,11 @@ struct PlayerBundle {
     direction: Direction,
 }
 
+const PLAYER_STARTING_POS: Vec3 = Vec3::new(-WINDOW_WIDTH / 4., GROUND_MIDDLE, 5.);
+
 impl PlayerBundle {
     fn default() -> Self {
-        let translation = Vec3::new(GROUND_OFFSET.x, GROUND_OFFSET.y, 5.);
+        let translation = PLAYER_STARTING_POS;
         Self {
             sprite_bundle: SpriteSheetBundle {
                 transform: Transform::from_translation(translation),

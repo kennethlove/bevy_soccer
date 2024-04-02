@@ -6,7 +6,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{
     arena::{GoalEvent, Wall},
-    constants::GROUND_OFFSET,
+    constants::{GROUND_MIDDLE, GROUND_OFFSET},
 };
 
 pub struct BallPlugin;
@@ -39,7 +39,7 @@ fn spawn_ball(
         MaterialMesh2dBundle {
             mesh,
             material: materials.add(Color::ORANGE),
-            transform: Transform::from_translation(Vec3::new(0., -GROUND_OFFSET.y, 1.)),
+            transform: Transform::from_translation(Vec3::new(0., GROUND_MIDDLE, 1.)),
             ..default()
         },
         Ball,

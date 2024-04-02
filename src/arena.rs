@@ -26,20 +26,25 @@ pub struct Ground;
 #[derive(Component)]
 pub struct Goal;
 
-const GOAL_SIZE: f32 = 80.;
-const GOAL_POSITIONS: [Vec3; 4] = [
-    Vec3::new(WINDOW_WIDTH / 2., WINDOW_HEIGHT / 2., 1.), // top right
-    Vec3::new(-WINDOW_WIDTH / 2., WINDOW_HEIGHT / 2., 1.), // top left
-    Vec3::new(
-        WINDOW_WIDTH / 2.,
-        (-WINDOW_HEIGHT / 2.) + GROUND_OFFSET.y * 2.,
-        1.,
-    ), // bottom right
-    Vec3::new(
-        -WINDOW_WIDTH / 2.,
-        (-WINDOW_HEIGHT / 2.) + GROUND_OFFSET.y * 2.,
-        1.,
-    ), // bottom left
+const GOAL_RADIUS: f32 = 160.;
+const GOAL_HEIGHT: f32 = 160.;
+const GOAL_WIDTH: f32 = 20.;
+
+const GOAL_POSITIONS: [Vec3; 2] = [
+    Vec3::new(-WINDOW_WIDTH / 2., GROUND_MIDDLE, 1.), // middle left
+    Vec3::new(WINDOW_WIDTH / 2., GROUND_MIDDLE, 1.),  // middle right
+                                                      // Vec3::new(WINDOW_WIDTH / 2., WINDOW_HEIGHT / 2., 1.), // top right
+                                                      // Vec3::new(-WINDOW_WIDTH / 2., WINDOW_HEIGHT / 2., 1.), // top left
+                                                      // Vec3::new(
+                                                      //     WINDOW_WIDTH / 2.,
+                                                      //     (-WINDOW_HEIGHT / 2.) + GROUND_OFFSET.y * 2.,
+                                                      //     1.,
+                                                      // ), // bottom right
+                                                      // Vec3::new(
+                                                      //     -WINDOW_WIDTH / 2.,
+                                                      //     (-WINDOW_HEIGHT / 2.) + GROUND_OFFSET.y * 2.,
+                                                      //     1.,
+                                                      // ), // bottom left
 ];
 
 fn setup_goals(
@@ -51,8 +56,8 @@ fn setup_goals(
         commands.spawn((
             MaterialMesh2dBundle {
                 mesh: meshes
-                    .add(Circle {
-                        radius: GOAL_SIZE / 2.,
+                    .add(Rectangle {
+                        half_size: Vec2::new(GOAL_WIDTH / 2., GOAL_HEIGHT / 2.), // (width, height)
                     })
                     .into(),
                 transform: Transform::from_translation(*position),
@@ -61,7 +66,7 @@ fn setup_goals(
             },
             Goal,
             RigidBody::Fixed,
-            Collider::ball(GOAL_SIZE / 2.),
+            Collider::cuboid(GOAL_WIDTH / 2., GOAL_HEIGHT / 2.),
             Sensor,
         ));
     }
@@ -122,7 +127,7 @@ fn setup_ground(mut commands: Commands, mut rapier_config: ResMut<RapierConfigur
             transform: Transform::from_translation(GROUND_OFFSET),
             sprite: Sprite {
                 color: Color::BEIGE,
-                custom_size: Some(Vec2::new(GROUND_SIZE_WIDTH, GROUND_SIZE_HEIGHT)),
+                custom_size: Some(Vec2::new(GROUND_WIDTH, GROUND_HEIGHT)),
                 ..default()
             },
             ..default()
@@ -137,20 +142,23 @@ pub struct Wall;
 
 fn setup_walls(mut commands: Commands) {
     // Vertical walls
-    for (x, y) in [(WINDOW_WIDTH / 2., 0.), (-WINDOW_WIDTH / 2., 0.)] {
+    for (x, y) in [
+        (WINDOW_WIDTH / 2., GROUND_MIDDLE),
+        (-WINDOW_WIDTH / 2., GROUND_MIDDLE),
+    ] {
         commands.spawn((
             SpriteBundle {
                 transform: Transform::from_translation(Vec3::new(x, y, 0.)),
                 sprite: Sprite {
                     color: Color::RED,
-                    custom_size: Some(Vec2::new(2., WINDOW_HEIGHT)),
+                    custom_size: Some(Vec2::new(2., GROUND_HEIGHT)),
                     ..default()
                 },
                 ..default()
             },
             Wall,
             RigidBody::Fixed,
-            Collider::cuboid(1., WINDOW_HEIGHT / 2.),
+            Collider::cuboid(1., GROUND_HEIGHT / 2.),
         ));
     }
 
