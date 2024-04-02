@@ -4,14 +4,16 @@ use bevy::{
 };
 use bevy_rapier2d::prelude::*;
 
-use crate::{arena::{GoalEvent, Wall}, constants::GROUND_OFFSET};
+use crate::{
+    arena::{GoalEvent, Wall},
+    constants::GROUND_OFFSET,
+};
 
 pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_systems(Update, spawn_ball.run_if(run_if_no_ball))
+        app.add_systems(Update, spawn_ball.run_if(run_if_no_ball))
             .add_systems(FixedUpdate, (hit_walls, despawn_after_goal));
     }
 }
@@ -23,12 +25,16 @@ fn run_if_no_ball(balls: Query<Entity, With<Ball>>) -> bool {
 #[derive(Component)]
 pub struct Ball;
 
+const BALL_RADIUS: f32 = 10.;
+
 fn spawn_ball(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let mesh = Mesh2dHandle(meshes.add(Circle { radius: 10. }));
+    let mesh = Mesh2dHandle(meshes.add(Circle {
+        radius: BALL_RADIUS,
+    }));
     commands.spawn((
         MaterialMesh2dBundle {
             mesh,
@@ -39,9 +45,9 @@ fn spawn_ball(
         Ball,
         RigidBody::Dynamic,
         AdditionalMassProperties::Mass(1.0),
-        Collider::ball(10.),
+        Collider::ball(BALL_RADIUS),
         Friction {
-            coefficient: 0.5,
+            coefficient: 0.2,
             combine_rule: CoefficientCombineRule::Average,
         },
         Restitution {
