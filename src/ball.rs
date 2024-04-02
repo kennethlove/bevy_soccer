@@ -6,7 +6,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::{
     arena::{GoalEvent, Wall},
-    constants::{GROUND_MIDDLE, GROUND_OFFSET},
+    constants::*,
 };
 
 pub struct BallPlugin;
