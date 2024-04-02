@@ -4,15 +4,21 @@ use bevy::{
 };
 use bevy_rapier2d::prelude::*;
 
-use crate::{arena::Wall, constants::GROUND_OFFSET};
+use crate::{arena::{GoalEvent, Wall}, constants::GROUND_OFFSET};
 
 pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_ball)
-            .add_systems(FixedUpdate, hit_walls);
+        // app.add_systems(Startup, spawn_ball)
+        app
+            .add_systems(Update, spawn_ball.run_if(run_if_no_ball))
+            .add_systems(FixedUpdate, (hit_walls, despawn_after_goal));
     }
+}
+
+fn run_if_no_ball(balls: Query<Entity, With<Ball>>) -> bool {
+    balls.is_empty()
 }
 
 #[derive(Component)]
@@ -61,5 +67,17 @@ fn hit_walls(
                 }
             }
         }
+    }
+}
+
+fn despawn_after_goal(
+    mut commands: Commands,
+    mut goal_events: EventReader<GoalEvent>,
+    balls: Query<Entity, With<Ball>>,
+) {
+    let ball = balls.single();
+    for goal in goal_events.read() {
+        info!("{:?}", goal);
+        commands.entity(ball).despawn_recursive()
     }
 }
