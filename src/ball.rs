@@ -76,8 +76,7 @@ fn despawn_after_goal(
     balls: Query<Entity, With<Ball>>,
 ) {
     let ball = balls.single();
-    for goal in goal_events.read() {
-        info!("{:?}", goal);
-        commands.entity(ball).despawn_recursive()
+    for _ in goal_events.read() {
+        commands.entity(ball).despawn()
     }
 }
