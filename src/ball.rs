@@ -40,8 +40,12 @@ fn spawn_ball(
         RigidBody::Dynamic,
         AdditionalMassProperties::Mass(1.0),
         Collider::ball(10.),
+        Friction {
+            coefficient: 0.5,
+            combine_rule: CoefficientCombineRule::Average,
+        },
         Restitution {
-            coefficient: 0.7,
+            coefficient: 1.,
             combine_rule: CoefficientCombineRule::Average,
         },
         ActiveEvents::COLLISION_EVENTS,
@@ -74,8 +78,9 @@ fn despawn_after_goal(
     mut goal_events: EventReader<GoalEvent>,
     balls: Query<Entity, With<Ball>>,
 ) {
-    let ball = balls.single();
     for _ in goal_events.read() {
-        commands.entity(ball).despawn()
+        for ball in &balls {
+            commands.entity(ball).despawn()
+        }
     }
 }
