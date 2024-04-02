@@ -4,12 +4,11 @@ use bevy::{
     render::{
         camera::RenderTarget,
         render_resource::{
-            Extent3d, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+            Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         },
         view::RenderLayers,
     },
 };
-use bevy_rapier2d::prelude::*;
 
 pub struct CameraPlugin;
 
