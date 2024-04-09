@@ -25,7 +25,7 @@ fn run_if_no_ball(balls: Query<Entity, With<Ball>>) -> bool {
 #[derive(Component)]
 pub struct Ball;
 
-const BALL_RADIUS: f32 = 10.;
+const BALL_RADIUS: f32 = 15.;
 
 fn spawn_ball(
     mut commands: Commands,
@@ -48,11 +48,11 @@ fn spawn_ball(
         Collider::ball(BALL_RADIUS),
         Friction {
             coefficient: 0.2,
-            combine_rule: CoefficientCombineRule::Average,
+            combine_rule: CoefficientCombineRule::Min,
         },
         Restitution {
             coefficient: 1.,
-            combine_rule: CoefficientCombineRule::Average,
+            combine_rule: CoefficientCombineRule::Max,
         },
         ActiveEvents::COLLISION_EVENTS,
         ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,

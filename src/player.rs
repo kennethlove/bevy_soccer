@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
-const WALK_SPEED: f32 = 100.;
-const RUN_SPEED: f32 = 250.;
+const WALK_SPEED: f32 = 150.;
+const RUN_SPEED: f32 = 300.;
 
 const IDLE_FRAMES: AnimationIndices = AnimationIndices { first: 0, last: 3 };
 const WALK_FRAMES: AnimationIndices = AnimationIndices { first: 4, last: 10 };
@@ -109,7 +109,7 @@ impl PlayerBundle {
                 transform: Transform::from_translation(translation),
                 sprite: Sprite {
                     color: Color::RED,
-                    custom_size: Vec2::new(50., 50.).into(),
+                    custom_size: Vec2::new(48., 48.).into(),
                     ..default()
                 },
                 ..default()
