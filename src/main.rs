@@ -6,14 +6,7 @@ use bevy_kira_audio::prelude::*;
 use bevy_pkv::PkvStore;
 use bevy_rapier2d::prelude::*;
 
-use bevy_soccer::animation::AnimationPlugin;
-use bevy_soccer::arena::ArenaPlugin;
-use bevy_soccer::ball::BallPlugin;
-use bevy_soccer::camera::CameraPlugin;
-use bevy_soccer::constants::*;
-use bevy_soccer::obstacle::ObstaclePlugin;
-use bevy_soccer::player::PlayerPlugin;
-use bevy_soccer::ui::UIPlugin;
+use bevy_soccer::prelude::*;
 
 fn main() {
     App::new()
@@ -44,7 +37,7 @@ fn main() {
         ))
         // .add_plugins(EditorPlugin::default())
         .add_plugins((
-            AnimationPlugin,
+            bevy_soccer::animation::AnimationPlugin,
             ArenaPlugin,
             BallPlugin,
             CameraPlugin,
