@@ -69,7 +69,7 @@ fn hit_walls(
             let mut ball = commands.entity(*entity1);
             for wall in &walls {
                 if wall == *entity2 {
-                    ball.insert(ExternalImpulse {
+                    ball.try_insert(ExternalImpulse {
                         impulse: Vec2::new(0., 0.),
                         torque_impulse: 0.,
                     });
