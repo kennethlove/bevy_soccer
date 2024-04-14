@@ -224,7 +224,6 @@ fn player_moves(
         event_writer.send(PlayerMoves {
             direction: Some(direction),
             running: action_state.pressed(&PlayerAction::Run),
-            ..default()
         });
     }
 }
