@@ -8,14 +8,23 @@ pub struct ObstaclePlugin;
 impl Plugin for ObstaclePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_obstacles)
-            .add_systems(Update, spin_obstacles);
+            .add_systems(Update, (spin_obstacles, expand_obstacles));
     }
 }
 
 #[derive(Component)]
 enum ObstacleVariant {
     Static,
-    Spinning,
+    Spinning {
+        clockwise: bool,
+    },
+    Expanding {
+        speed: f32,
+        max_scale: f32,
+        min_scale: f32,
+        expanding: bool,
+        horizontal: bool,
+    },
 }
 
 #[derive(Component)]
@@ -35,7 +44,7 @@ impl Default for Obstacle {
 
 const OBSTACLE_SIZE: f32 = 40.;
 
-const OBSTACLES: [Obstacle; 4] = [
+const OBSTACLES: [Obstacle; 6] = [
     Obstacle {
         translation: Vec3::new(
             -WINDOW_WIDTH / 3.,
@@ -49,7 +58,7 @@ const OBSTACLES: [Obstacle; 4] = [
             WINDOW_WIDTH / 3.,
             (-GROUND_HEIGHT / 4.) + GROUND_OFFSET.y,
             5.,
-        ), // bottom left
+        ), // bottom right
         variant: ObstacleVariant::Static,
     },
     Obstacle {
@@ -57,8 +66,8 @@ const OBSTACLES: [Obstacle; 4] = [
             -WINDOW_WIDTH / 3.,
             (GROUND_HEIGHT / 4.) + GROUND_OFFSET.y,
             5.,
-        ), // top right
-        variant: ObstacleVariant::Static,
+        ), // top left
+        variant: ObstacleVariant::Spinning { clockwise: true },
     },
     Obstacle {
         translation: Vec3::new(
@@ -66,7 +75,27 @@ const OBSTACLES: [Obstacle; 4] = [
             (GROUND_HEIGHT / 4.) + GROUND_OFFSET.y,
             4.,
         ), // top right
-        variant: ObstacleVariant::Spinning,
+        variant: ObstacleVariant::Spinning { clockwise: false },
+    },
+    Obstacle {
+        translation: Vec3::new(0., (GROUND_HEIGHT / 4.) + GROUND_OFFSET.y, 4.), // bottom center
+        variant: ObstacleVariant::Expanding {
+            speed: 0.5,
+            max_scale: 2.,
+            min_scale: 1.,
+            expanding: true,
+            horizontal: true,
+        },
+    },
+    Obstacle {
+        translation: Vec3::new(0., (-GROUND_HEIGHT / 4.) + GROUND_OFFSET.y, 4.), // top center
+        variant: ObstacleVariant::Expanding {
+            speed: 0.5,
+            max_scale: 2.,
+            min_scale: 1.,
+            expanding: true,
+            horizontal: false,
+        },
     },
 ];
 
@@ -95,9 +124,62 @@ fn spawn_obstacles(mut commands: Commands) {
 
 fn spin_obstacles(mut query: Query<(&ObstacleVariant, &mut Transform)>, time: Res<Time>) {
     for (variant, mut position) in query.iter_mut() {
-        if let ObstacleVariant::Spinning = variant {
+        if let ObstacleVariant::Spinning { clockwise } = variant {
+            let switch = if *clockwise { 1. } else { -1. };
             position.rotation *=
-                Quat::from_rotation_z(time.delta_seconds() * 2. * std::f32::consts::PI);
+                Quat::from_rotation_z(switch * time.delta_seconds() * 2. * std::f32::consts::PI);
+        }
+    }
+}
+
+fn expand_obstacles(
+    mut commands: Commands,
+    mut query: Query<(Entity, &ObstacleVariant, &mut Transform)>,
+    time: Res<Time>,
+) {
+    for (entity, variant, mut position) in query.iter_mut() {
+        if let ObstacleVariant::Expanding {
+            speed,
+            max_scale,
+            min_scale,
+            expanding,
+            horizontal,
+        } = variant
+        {
+            let mut now_expanding = *expanding;
+            if *horizontal {
+                if *expanding && position.scale.x <= *max_scale {
+                    position.scale.x += time.delta_seconds() * speed;
+                    if position.scale.x >= *max_scale {
+                        now_expanding = false;
+                    }
+                } else if !expanding && position.scale.x >= *min_scale {
+                    position.scale.x -= time.delta_seconds() * speed;
+                    if position.scale.x <= *min_scale {
+                        now_expanding = true;
+                    }
+                }
+            } else {
+                if *expanding && position.scale.y <= *max_scale {
+                    position.scale.y += time.delta_seconds() * speed;
+                    if position.scale.y >= *max_scale {
+                        now_expanding = false;
+                    }
+                } else if !expanding && position.scale.y >= *min_scale {
+                    position.scale.y -= time.delta_seconds() * speed;
+                    if position.scale.y <= *min_scale {
+                        now_expanding = true;
+                    }
+                }
+            }
+            let new_variant = ObstacleVariant::Expanding {
+                speed: *speed,
+                max_scale: *max_scale,
+                min_scale: *min_scale,
+                expanding: now_expanding,
+                horizontal: *horizontal,
+            };
+            commands.entity(entity).insert(new_variant);
         }
     }
 }
