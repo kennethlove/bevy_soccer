@@ -2,7 +2,7 @@ use crate::{
     animation::{AnimationIndices, AnimationTimer},
     constants::*,
 };
-use bevy::{ecs::entity, prelude::*};
+use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
 use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
@@ -30,6 +30,12 @@ enum Direction {
     Right,
 }
 
+#[derive(Component)]
+struct ChosenPlayer;
+
+#[derive(Component)]
+struct Marker;
+
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
@@ -37,7 +43,7 @@ impl Plugin for PlayerPlugin {
         app.init_state::<PlayerState>()
             .add_event::<PlayerMoves>()
             .add_plugins(InputManagerPlugin::<PlayerAction>::default())
-            .add_systems(Startup, spawn_player)
+            .add_systems(Startup, (spawn_player, spawn_chosen_player_marker.after(spawn_player)))
             .add_systems(
                 FixedUpdate,
                 (player_idles, player_moves, update_sprite_direction),
@@ -47,6 +53,7 @@ impl Plugin for PlayerPlugin {
                 (
                     movement,
                     update_direction,
+                    update_chosen_player_marker_position.after(movement),
                     idle_animation.run_if(in_state(PlayerState::Idle)),
                     walk_animation.run_if(in_state(PlayerState::Walking)),
                     run_animation.run_if(in_state(PlayerState::Running)),
@@ -178,7 +185,35 @@ fn spawn_player(
         },
         RigidBody::KinematicPositionBased,
         Collider::cuboid(12., 17.),
+        ChosenPlayer,
     ));
+}
+
+fn spawn_chosen_player_marker(
+    mut commands: Commands,
+    query: Query<&Transform, With<ChosenPlayer>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let player = query.get_single().unwrap();
+    let pointer = Mesh2dHandle(meshes.add(Triangle2d::new(
+        Vec2::new(0., 0.),
+        Vec2::new(12., 24.),
+        Vec2::new(-12., 24.),
+    )));
+    let marker = MaterialMesh2dBundle {
+        mesh: pointer,
+        material: materials.add(Color::DARK_GREEN),
+        transform: Transform::from_translation(player.translation + Vec3::new(0., 30., 0.)),
+        ..default()
+    };
+
+    commands.spawn((marker, Marker));
+
 }
 
 #[derive(Debug, Default, Event)]
@@ -341,4 +376,18 @@ fn update_sprite_direction(mut query: Query<(&mut Sprite, &Direction), With<Play
             Direction::Right => sprite.flip_x = false,
         }
     }
+}
+
+fn update_chosen_player_marker_position(
+    query: Query<&Transform, (With<ChosenPlayer>, Without<Marker>)>,
+    mut marker_query: Query<&mut Transform, With<Marker>>,
+) {
+    if query.is_empty() || marker_query.is_empty() {
+        return;
+    }
+
+    let player = query.get_single().unwrap();
+    let mut marker = marker_query.get_single_mut().unwrap();
+
+    marker.translation = player.translation + Vec3::new(0., 30., 0.);
 }
