@@ -2,7 +2,7 @@ use crate::{
     animation::{AnimationIndices, AnimationTimer},
     constants::*,
 };
-use bevy::prelude::*;
+use bevy::{ecs::entity, prelude::*};
 use bevy_rapier2d::prelude::*;
 use leafwing_input_manager::prelude::*;
 
@@ -238,24 +238,24 @@ fn movement(
         return;
     }
 
-    let mut player = query.single_mut();
+    for mut player in &mut query {
+        for event in player_moves.read() {
+            let PlayerMoves { direction, running } = event;
+            {
+                if *running {
+                    next_state.set(PlayerState::Running);
+                } else {
+                    next_state.set(PlayerState::Walking);
+                }
 
-    for event in player_moves.read() {
-        let PlayerMoves { direction, running } = event;
-        {
-            if *running {
-                next_state.set(PlayerState::Running);
-            } else {
-                next_state.set(PlayerState::Walking);
-            }
-
-            if let Some(direction) = direction {
-                player.translation = {
-                    Some(
-                        Vec2::new(direction.x, direction.y)
-                            * time.delta_seconds()
-                            * if *running { RUN_SPEED } else { WALK_SPEED },
-                    )
+                if let Some(direction) = direction {
+                    player.translation = {
+                        Some(
+                            Vec2::new(direction.x, direction.y)
+                                * time.delta_seconds()
+                                * if *running { RUN_SPEED } else { WALK_SPEED },
+                        )
+                    }
                 }
             }
         }
@@ -270,11 +270,12 @@ fn idle_animation(
         return;
     }
 
-    let (entity, mut atlas) = query.single_mut();
-    let mut entity = commands.entity(entity);
-    entity.insert(IDLE_FRAMES);
-    if atlas.index > IDLE_FRAMES.last {
-        atlas.index = IDLE_FRAMES.first;
+    for (entity, mut atlas) in query.iter_mut() {
+        let mut entity = commands.entity(entity);
+        entity.insert(IDLE_FRAMES);
+        if atlas.index > IDLE_FRAMES.last {
+            atlas.index = IDLE_FRAMES.first;
+        }
     }
 }
 
@@ -286,11 +287,12 @@ fn walk_animation(
         return;
     }
 
-    let (entity, mut atlas) = query.single_mut();
-    let mut entity = commands.entity(entity);
-    entity.insert(WALK_FRAMES);
-    if atlas.index < WALK_FRAMES.first || atlas.index > WALK_FRAMES.last {
-        atlas.index = WALK_FRAMES.first;
+    for (entity, mut atlas) in query.iter_mut() {
+        let mut entity = commands.entity(entity);
+        entity.insert(WALK_FRAMES);
+        if atlas.index < WALK_FRAMES.first || atlas.index > WALK_FRAMES.last {
+            atlas.index = WALK_FRAMES.first;
+        }
     }
 }
 
@@ -302,11 +304,12 @@ fn run_animation(
         return;
     }
 
-    let (entity, mut atlas) = query.single_mut();
-    let mut entity = commands.entity(entity);
-    entity.insert(RUN_FRAMES);
-    if atlas.index < RUN_FRAMES.first || atlas.index > RUN_FRAMES.last {
-        atlas.index = RUN_FRAMES.first;
+    for (entity, mut atlas) in query.iter_mut() {
+        let mut entity = commands.entity(entity);
+        entity.insert(RUN_FRAMES);
+        if atlas.index < RUN_FRAMES.first || atlas.index > RUN_FRAMES.last {
+            atlas.index = RUN_FRAMES.first;
+        }
     }
 }
 
@@ -318,12 +321,12 @@ fn update_direction(
         return;
     }
 
-    let (entity, controller) = query.single();
-
-    if controller.desired_translation.x > 0. {
-        commands.entity(entity).insert(Direction::Right);
-    } else if controller.desired_translation.x < 0. {
-        commands.entity(entity).insert(Direction::Left);
+    for (entity, controller) in &query {
+        if controller.desired_translation.x > 0. {
+            commands.entity(entity).insert(Direction::Right);
+        } else if controller.desired_translation.x < 0. {
+            commands.entity(entity).insert(Direction::Left);
+        }
     }
 }
 
@@ -332,9 +335,10 @@ fn update_sprite_direction(mut query: Query<(&mut Sprite, &Direction), With<Play
         return;
     }
 
-    let (mut sprite, direction) = query.single_mut();
-    match direction {
-        Direction::Left => sprite.flip_x = true,
-        Direction::Right => sprite.flip_x = false,
+    for (mut sprite, direction) in query.iter_mut() {
+        match direction {
+            Direction::Left => sprite.flip_x = true,
+            Direction::Right => sprite.flip_x = false,
+        }
     }
 }
