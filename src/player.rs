@@ -16,6 +16,9 @@ const RUN_FRAMES: AnimationIndices = AnimationIndices {
     last: 23,
 };
 
+const PLAYERS_PER_TEAM: usize = 3;
+const NUM_TEAMS: usize = 1;
+
 #[derive(Clone, Component, Copy, Debug, Default, Eq, Hash, PartialEq, States)]
 enum PlayerState {
     #[default]
@@ -30,8 +33,11 @@ enum Direction {
     Right,
 }
 
-#[derive(Component)]
-struct ChosenPlayer;
+#[derive(Component, PartialEq)]
+enum PlayerType {
+    Live,
+    Drone,
+}
 
 #[derive(Component)]
 struct Marker;
@@ -43,7 +49,7 @@ impl Plugin for PlayerPlugin {
         app.init_state::<PlayerState>()
             .add_event::<PlayerMoves>()
             .add_plugins(InputManagerPlugin::<PlayerAction>::default())
-            .add_systems(Startup, (spawn_player, spawn_chosen_player_marker.after(spawn_player)))
+            .add_systems(Startup, (spawn_players, spawn_chosen_player_marker.after(spawn_players)))
             .add_systems(
                 FixedUpdate,
                 (player_idles, player_moves, update_sprite_direction),
@@ -104,6 +110,7 @@ struct PlayerBundle {
     player: Player,
     input_manager: InputManagerBundle<PlayerAction>,
     direction: Direction,
+    player_type: PlayerType,
 }
 
 const PLAYER_STARTING_POS: Vec3 = Vec3::new(-WINDOW_WIDTH / 4., GROUND_MIDDLE, 5.);
@@ -124,6 +131,7 @@ impl PlayerBundle {
             player: Player,
             input_manager: InputManagerBundle::with_map(PlayerBundle::default_input_map()),
             direction: Direction::Right,
+            player_type: PlayerType::Drone,
         }
     }
 
@@ -157,6 +165,48 @@ impl PlayerBundle {
     }
 }
 
+fn spawn_players(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>
+) {
+    let texture: Handle<Image> = asset_server.load("sprites/blue.png");
+    let layout = TextureAtlasLayout::from_grid(Vec2::new(24., 24.), 24, 1, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(layout);
+
+    for team in 0..NUM_TEAMS {
+        for player in 0..PLAYERS_PER_TEAM {
+            let mut new_player = PlayerBundle::default();
+            new_player.sprite_bundle.texture = texture.clone();
+            new_player.sprite_bundle.sprite.color = Color::WHITE;
+            new_player.sprite_bundle.atlas = TextureAtlas {
+                layout: texture_atlas_layout.clone(),
+                index: IDLE_FRAMES.first,
+            };
+            new_player.sprite_bundle.transform.translation = Vec3::new(
+                PLAYER_STARTING_POS.x + (team as f32 * 48.),
+                PLAYER_STARTING_POS.y + (player as f32 * 48.),
+                PLAYER_STARTING_POS.z,
+            );
+            let player_type = if player == 0 { PlayerType::Live } else { PlayerType::Drone };
+            new_player.player_type = player_type;
+
+            commands.spawn((
+                new_player,
+                IDLE_FRAMES,
+                AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+                KinematicCharacterController {
+                    apply_impulse_to_dynamic_bodies: true,
+                    custom_mass: Some(100.),
+                    ..default()
+                },
+                RigidBody::KinematicPositionBased,
+                Collider::cuboid(12., 17.),
+            ));
+        }
+    }
+}
+
 fn spawn_player(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -185,13 +235,13 @@ fn spawn_player(
         },
         RigidBody::KinematicPositionBased,
         Collider::cuboid(12., 17.),
-        ChosenPlayer,
+        PlayerType::Live,
     ));
 }
 
 fn spawn_chosen_player_marker(
     mut commands: Commands,
-    query: Query<&Transform, With<ChosenPlayer>>,
+    query: Query<(&PlayerType, &Transform), With<PlayerType>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
@@ -199,21 +249,25 @@ fn spawn_chosen_player_marker(
         return;
     }
 
-    let player = query.get_single().unwrap();
-    let pointer = Mesh2dHandle(meshes.add(Triangle2d::new(
-        Vec2::new(0., 0.),
-        Vec2::new(12., 24.),
-        Vec2::new(-12., 24.),
-    )));
-    let marker = MaterialMesh2dBundle {
-        mesh: pointer,
-        material: materials.add(Color::DARK_GREEN),
-        transform: Transform::from_translation(player.translation + Vec3::new(0., 30., 0.)),
-        ..default()
-    };
+    for (pt, player) in &query {
+        if pt != &PlayerType::Live {
+            return;
+        }
 
-    commands.spawn((marker, Marker));
+        let pointer = Mesh2dHandle(meshes.add(Triangle2d::new(
+            Vec2::new(0., 0.),
+            Vec2::new(12., 24.),
+            Vec2::new(-12., 24.),
+        )));
+        let marker = MaterialMesh2dBundle {
+            mesh: pointer,
+            material: materials.add(Color::DARK_GREEN),
+            transform: Transform::from_translation(player.translation + Vec3::new(0., 30., 0.)),
+            ..default()
+        };
 
+        commands.spawn((marker, Marker));
+    }
 }
 
 #[derive(Debug, Default, Event)]
@@ -226,11 +280,11 @@ fn player_idles(
     query: Query<&ActionState<PlayerAction>, With<Player>>,
     mut next_state: ResMut<NextState<PlayerState>>,
 ) {
-    let action_state = query.single();
-
-    for input_direction in PlayerAction::DIRECTIONS {
-        if action_state.pressed(&input_direction) {
-            return;
+    for action_state in &query {
+        for input_direction in PlayerAction::DIRECTIONS {
+            if action_state.pressed(&input_direction) {
+                return;
+            }
         }
     }
 
@@ -241,25 +295,25 @@ fn player_moves(
     query: Query<&ActionState<PlayerAction>, With<Player>>,
     mut event_writer: EventWriter<PlayerMoves>,
 ) {
-    let action_state = query.single();
-
     let mut direction_vector = Vec2::ZERO;
 
-    for input_direction in PlayerAction::DIRECTIONS {
-        if action_state.pressed(&input_direction) {
-            if let Some(direction) = input_direction.direction() {
-                direction_vector += *direction;
+    for action_state in &query {
+        for input_direction in PlayerAction::DIRECTIONS {
+            if action_state.pressed(&input_direction) {
+                if let Some(direction) = input_direction.direction() {
+                    direction_vector += *direction;
+                }
             }
         }
-    }
 
-    let net_direction = Direction2d::new(direction_vector);
+        let net_direction = Direction2d::new(direction_vector);
 
-    if let Ok(direction) = net_direction {
-        event_writer.send(PlayerMoves {
-            direction: Some(direction),
-            running: action_state.pressed(&PlayerAction::Run),
-        });
+        if let Ok(direction) = net_direction {
+            event_writer.send(PlayerMoves {
+                direction: Some(direction),
+                running: action_state.pressed(&PlayerAction::Run),
+            });
+        }
     }
 }
 
@@ -379,15 +433,21 @@ fn update_sprite_direction(mut query: Query<(&mut Sprite, &Direction), With<Play
 }
 
 fn update_chosen_player_marker_position(
-    query: Query<&Transform, (With<ChosenPlayer>, Without<Marker>)>,
+    query: Query<(&PlayerType, &Transform), Without<Marker>>,
     mut marker_query: Query<&mut Transform, With<Marker>>,
 ) {
     if query.is_empty() || marker_query.is_empty() {
         return;
     }
 
-    let player = query.get_single().unwrap();
-    let mut marker = marker_query.get_single_mut().unwrap();
+    for (pt, player) in &query {
 
-    marker.translation = player.translation + Vec3::new(0., 30., 0.);
+        if pt != &PlayerType::Live {
+            return;
+        }
+
+        let mut marker = marker_query.get_single_mut().unwrap();
+
+        marker.translation = player.translation + Vec3::new(0., 30., 0.);
+    }
 }
