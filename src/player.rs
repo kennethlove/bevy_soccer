@@ -207,38 +207,6 @@ fn spawn_players(
     }
 }
 
-fn spawn_player(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-) {
-    let texture: Handle<Image> = asset_server.load("sprites/blue.png");
-    let layout = TextureAtlasLayout::from_grid(Vec2::new(24., 24.), 24, 1, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(layout);
-    let mut player = PlayerBundle::default();
-
-    player.sprite_bundle.texture = texture;
-    player.sprite_bundle.sprite.color = Color::WHITE;
-    player.sprite_bundle.atlas = TextureAtlas {
-        layout: texture_atlas_layout,
-        index: IDLE_FRAMES.first,
-    };
-
-    commands.spawn((
-        player,
-        IDLE_FRAMES,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-        KinematicCharacterController {
-            apply_impulse_to_dynamic_bodies: true,
-            custom_mass: Some(100.),
-            ..default()
-        },
-        RigidBody::KinematicPositionBased,
-        Collider::cuboid(12., 17.),
-        PlayerType::Live,
-    ));
-}
-
 fn spawn_chosen_player_marker(
     mut commands: Commands,
     query: Query<(&PlayerType, &Transform), With<PlayerType>>,
